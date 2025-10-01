@@ -1,0 +1,75 @@
+import tensorflow as tf
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt 
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Flatten, Conv2D, MaxPooling2D, Normalization
+
+# Load the dataset
+(X_train, y_train), (X_test, y_test) = tf.keras.datasets.mnist.load_data()
+
+# Normalization with channel dimension
+normalizer = Normalization(input_shape=(28,28,1))
+normalizer.adapt(X_train[..., tf.newaxis])
+
+# Convert tensors -> numpy arrays after normalization
+X_train_norm = normalizer(X_train[..., tf.newaxis]).numpy()
+X_test_norm = normalizer(X_test[..., tf.newaxis]).numpy()
+
+# Build the model
+model = Sequential([
+    Conv2D(8, (3,3), activation='relu', padding='same', input_shape=(28,28,1)),
+    MaxPooling2D(),
+    Flatten(),
+    Dense(64, activation='relu'),
+    Dense(64, activation='relu'),
+    Dense(10, activation='softmax')
+])
+
+# Compile the model
+model.compile(
+    optimizer='adam',
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+# Train the model
+history = model.fit(X_train_norm, y_train, epochs=10)
+
+# Plot the Loss and Accuracy 
+df = pd.DataFrame(history.history)
+loss_plot = df.plot(y='loss', title='Loss vs. Epochs', legend=False)
+loss_plot.set(xlabel='Epochs', ylabel='Loss')
+acc_plot = df.plot(y="accuracy", title="Accuracy vs Epochs", legend=False)
+acc_plot.set(xlabel="Epochs", ylabel="Accuracy")
+plt.show()
+
+# Evaluate the model
+model.evaluate(X_test_norm, y_test, verbose=2)
+
+# Test randomly selected images
+num_test_images = X_test_norm.shape[0]
+random_inx = np.random.choice(num_test_images, 4)
+random_test_images = X_test_norm[random_inx, ...]
+random_test_labels = y_test[random_inx, ...]
+
+# Get predictions
+predictions = model.predict(random_test_images)
+
+# Plot the results
+fig, axes = plt.subplots(4, 2, figsize=(16, 12))
+fig.subplots_adjust(hspace=0.4, wspace=-0.2)
+
+for i, (prediction, image, label) in enumerate(zip(predictions, random_test_images, random_test_labels)):
+    axes[i, 0].imshow(np.squeeze(image), cmap="gray")
+    axes[i, 0].get_xaxis().set_visible(False)
+    axes[i, 0].get_yaxis().set_visible(False)
+    axes[i, 0].text(10., -1.5, f'Digit {label}')
+    axes[i, 1].bar(np.arange(len(prediction)), prediction)
+    axes[i, 1].set_xticks(np.arange(len(prediction)))
+    axes[i, 1].set_title(f"Prediction: {np.argmax(prediction)}")
+    
+plt.show()
+
+
+
