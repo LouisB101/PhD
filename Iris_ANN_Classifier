@@ -1,0 +1,84 @@
+from numpy.random import seed
+import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt   
+from sklearn.model_selection import train_test_split
+from sklearn import datasets
+from tensorflow.keras import regularizers
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, Normalization
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from tensorflow.keras.initializers import HeUniform
+
+# load dataset
+dataset = datasets.load_iris()
+data = dataset['data']
+labels = dataset['target']
+labels = tf.keras.utils.to_categorical(np.array(labels))   
+print(dataset['DESCR'])
+
+# split data into test and training sets
+X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.1)
+
+# initialise model
+wd = 0.01
+dr = 0.1 
+model = Sequential([
+    Dense(64, activation='relu', input_shape=(X_train.shape[1],),
+           kernel_initializer='he_uniform', bias_initializer='ones'),
+    Dense(128, activation='relu',kernel_regularizer=regularizers.l2(wd)),
+    Dense(128, activation='relu',kernel_regularizer=regularizers.l2(wd)),
+    Dropout(dr),
+    Dense(128, activation='relu',kernel_regularizer=regularizers.l2(wd)),
+    Dense(128, activation='relu',kernel_regularizer=regularizers.l2(wd)),
+    Normalization(),
+    Dense(64, activation='relu',kernel_regularizer=regularizers.l2(wd)),
+    Dense(64, activation='relu',kernel_regularizer=regularizers.l2(wd)),
+    Dropout(dr),
+    Dense(64, activation='relu',kernel_regularizer=regularizers.l2(wd)),
+    Dense(64, activation='relu',kernel_regularizer=regularizers.l2(wd)),
+    Dense(3, activation='softmax')
+])
+
+# compile model 
+model.compile(
+    optimizer='adam',
+    loss='categorical_crossentropy',   
+    metrics=['accuracy']
+)
+
+# Define callbacks 
+early_stopping = EarlyStopping(patience=30,mode='min')
+learning_rate = ReduceLROnPlateau(factor=0.2,patience=20)
+
+# Train model
+history = model.fit(X_train, y_train, epochs=200, validation_split=0.15,
+                    batch_size=40, callbacks=[early_stopping,learning_rate])
+
+# plot graph of accuracy
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('Accuracy vs. epochs')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['Training', 'Validation'], loc='lower right')
+plt.show()
+
+# plot graph of loss 
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('Loss vs. epochs')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(['Training', 'Validation'], loc='upper right')
+plt.show()
+
+# Evaluate the model on the test set
+test_loss, test_acc = model.evaluate(X_test, y_test, verbose=0)
+print("Test loss: {:.3f}\nTest accuracy: {:.2f}%".format(test_loss, 100 * test_acc))
+
+
+
+
+
+
